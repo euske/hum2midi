@@ -20,7 +20,9 @@ wavcorr.so: wavcorr.c
 
 pitch.py: wavcorr.so
 
+hum2midi.py: pitch.py wavestream.py
+
 test: mary.mid
 
-mary.mid: mary.wav
-	$(HUM2MIDI) -M -o $@ $+
+mary.mid: hum2midi.py mary.wav
+	$(HUM2MIDI) -M -o $@ mary.wav

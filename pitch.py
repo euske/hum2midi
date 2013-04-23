@@ -58,6 +58,7 @@ class PitchContour(object):
         self.framerate = framerate
         self.wmin = (framerate/pitchmax)
         self.wmax = (framerate/pitchmin)
+        self.step = self.wmin/2
         self.threshold = threshold
         self.reset()
         return
@@ -75,10 +76,10 @@ class PitchContour(object):
             t = self._offset + i
             if self.threshold < mmax:
                 pitch = self.framerate/dmax
-                self.segments.append((t, pitch))
-            elif mmax < 0.5:
-                self.segments.append((t, 0))
-            i += self.wmin/2
+                self.segments.append(pitch)
+            else:
+                self.segments.append(0)
+            i += self.step
         self._offset += nframes
         return
 
@@ -111,7 +112,7 @@ def main(argv):
                                    threshold=threshold)
         contour.load(src.readraw(), src.nframes)
         src.close()
-    for (t,p) in contour.segments:
+    for (t,p) in enumerate(contour.segments):
         print t, p
     return
 

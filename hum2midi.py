@@ -4,6 +4,7 @@ import midi
 from pitch import PitchContour
 from wavestream import WaveReader
 
+# MIDI freq/key number.
 FREQUENCIES = [
     (28, 21), (29, 22), (31, 23), (33, 24),
     (35, 25), (37, 26), (39, 27), (41, 28),
@@ -80,10 +81,12 @@ def main(argv):
         return usage()
     pitchmin = 70
     pitchmax = 400
-    threshold = 0.9
+    threshold = 0.95
     outpath = 'out.mid'
-    wsize = 100
+    wsize = 50
     instru = 0
+    attack = 70
+    release = 70
     for (k, v) in opts:
         if k == '-M': (pitchmin,pitchmax) = (75,200) # male voice
         elif k == '-F': (pitchmin,pitchmax) = (150,300) # female voice
@@ -104,37 +107,33 @@ def main(argv):
         src.close()
     #
     events = [midi.ProgramChangeEvent(tick=0, channel=0, data=[instru])]
-    ct = contour.wmin/2
     window = []
-    t0 = 0
     km0 = 0
-    kt0 = 0
-    kt1 = 0
-    for (t1,p) in contour.segments:
+    kt = 0
+    kd = 0
+    for p in contour.segments:
         if p == 0:
             k = 0
         else:
             i = getpt(FRANGES, p)
             (_,k) = FRANGES[i-1]
-        dt = (t1-t0)/ct
-        t0 = t1
-        for _ in xrange(dt):
-            window.append(k)
-            if wsize <= len(window):
-                window = window[1:]
-                km1 = majority(window)
-                if km0 == km1:
-                    kt1 += 1
-                else:
-                    print km0, kt1
-                    if km0 == 0:
-                        kt0 += kt1
-                    else:
-                        events.append(midi.NoteOnEvent(tick=kt0, channel=0, data=[km0, 100]))
-                        events.append(midi.NoteOffEvent(tick=kt1, channel=0, data=[km0, 100]))
-                        kt0 = 0
-                    km0 = km1
-                    kt1 = 0
+        #print '%d/%d' % (p,k),
+        window.append(k)
+        if len(window) < wsize: continue
+        window = window[1:]
+        km1 = majority(window)
+        if km0 == km1:
+            kd += 1
+        else:
+            print km0, kd
+            if km0 == 0:
+                kt += kd
+            else:
+                events.append(midi.NoteOnEvent(tick=kt, channel=0, data=[km0, attack]))
+                events.append(midi.NoteOffEvent(tick=kd, channel=0, data=[km0, release]))
+                kt = 0
+            kd = 0
+            km0 = km1
     events.append(midi.EndOfTrackEvent(tick=0, data=[]))
     pat = midi.Pattern(tracks=[events])
     midi.write_midifile(outpath, pat)
